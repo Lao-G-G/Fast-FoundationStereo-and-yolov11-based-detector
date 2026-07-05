@@ -2,6 +2,28 @@
 
 这是一个实时3D物体检测系统，将用于物体检测的YOLOv11与用于深度估计的Fast-Foundation Stereo相结合，从而生成3D边界框并实现BEV可视化。
 
+# 项目结构
+
+```
+├── detect_and_track/          # 主要代码
+│   ├── run_stereo.py          # 主入口
+│   ├── stereo_depth_model.py  # Fast-FoundationStereo 深度封装
+│   ├── detection_model.py     # YOLOv11 检测器
+│   ├── bbox3d_utils.py        # 3D 框估计 + 可视化
+│   ├── load_camera_params.py  # 相机参数加载
+│   └── test_single.py         # 单帧诊断脚本
+├── core/                      # Fast-FoundationStereo 核心
+│   ├── foundation_stereo.py   # 模型定义
+│   ├── extractor.py           # 特征提取
+│   ├── geometry.py            # 几何编码
+│   ├── submodule.py           # 子模块
+│   ├── update.py              # GRU 更新
+│   └── utils/
+├── Utils.py                   # 工具函数
+├── requirements.txt           # Python 依赖
+└── .gitignore
+```
+
 # 安装环境
 
 ```
@@ -11,7 +33,7 @@ conda activate fast_foundation_stereo
 
 # 模型权重
 
-从 [这里](https://drive.google.com/drive/folders/1HuTt7UIp7gQsMiDvJwVuWmKpvFzIIMap?usp=drive_link)下载模型权重，并放在 `weights/` (e.g. `./weights/23-36-37`). 下表对比了预训练模型家族中不同尺寸的若干代表性模型之间的差异。这些模型按运行速度从慢到快排序，准确率依次递减；运行时间是在 GPU 3090 上、图像尺寸为 640x480 的条件下测得的。
+从 [Google Drive](https://drive.google.com/drive/folders/1HuTt7UIp7gQsMiDvJwVuWmKpvFzIIMap?usp=drive_link)下载模型权重，并放在 `weights/` (e.g. `./weights/23-36-37`). 下表对比了预训练模型家族中不同尺寸的若干代表性模型之间的差异。这些模型按运行速度从慢到快排序，准确率依次递减；运行时间是在 GPU 3090 上、图像尺寸为 640x480 的条件下测得的。
 
 为了权衡速度和精度，可以尝试:
 
@@ -27,6 +49,12 @@ conda activate fast_foundation_stereo
 | `20-26-39`    | 4           | 37.5        | 16.4            | 651             |
 | `20-30-48`    | 8           | 38.4        | 16.6            | 646             |
 | `20-30-48`    | 4           | 29.3        | 14.0            | 646             |
+
+```
+weights/
+└── 20-30-48/
+    └── model_best_bp2_serialize.pth
+```
 
 # 运行
 
