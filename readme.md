@@ -9,13 +9,15 @@ conda env create -f requirements.yml
 conda activate fast_foundation_stereo
 ```
 
+# 模型权重
 
-# Weights and Trade-off
-download from [here](https://drive.google.com/drive/folders/1HuTt7UIp7gQsMiDvJwVuWmKpvFzIIMap?usp=drive_link) and put under the folder `weights/` (e.g. `./weights/23-36-37`). Below table compares the differences among some representative models of varying sizes from our trained family. They are sorted from slowest to fastest, with accuracy descending, where runtime is profiled on GPU 3090, image size 640x480.
+从 [这里](https://drive.google.com/drive/folders/1HuTt7UIp7gQsMiDvJwVuWmKpvFzIIMap?usp=drive_link)下载模型权重，并放在 `weights/` (e.g. `./weights/23-36-37`). 下表对比了预训练模型家族中不同尺寸的若干代表性模型之间的差异。这些模型按运行速度从慢到快排序，准确率依次递减；运行时间是在 GPU 3090 上、图像尺寸为 640x480 的条件下测得的。
 
-To trade-off speed and accuracy, there are two options:
-1) Try with different checkpoints.
-2) Tune the config flags (see explanations in the "Run demo" section below).
+为了权衡速度和精度，可以尝试:
+
+1) 不同的权重.
+
+2) 调整配置设置 (see explanations in the "Run demo" section below).
 
 | Checkpoint     | valid_iters | Runtime-Pytorch (ms) | Runtime-TRT (ms) | Peak Memory (MB) |
 |---------------|-------------|-------------|-----------------|-----------------|
@@ -26,160 +28,47 @@ To trade-off speed and accuracy, there are two options:
 | `20-30-48`    | 8           | 38.4        | 16.6            | 646             |
 | `20-30-48`    | 4           | 29.3        | 14.0            | 646             |
 
-# Run demo
+# 运行
+
 ```
-python scripts/run_demo.py --model_dir weights/23-36-37/model_best_bp2_serialize.pth --left_file demo_data/left.png --right_file demo_data/right.png --intrinsic_file demo_data/K.txt --out_dir output/ --remove_invisible 0 --denoise_cloud 1  --scale 1 --get_pc 1 --valid_iters 8 --max_disp 192 --zfar 100
+python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2_serialize.pth --left_dir demo_data/left.png --right_dir demo_data/right.png --output_path output/output_faststereo.mp4  --scale 1 --valid_iters 8 --max_frame 192 --z_far 100
 ```
+
 | Flag                        | Meaning                                                                |
 |-----------------------------|------------------------------------------------------------------------|
-| `--model_dir`               | Path to the trained weights/model file                                 |
-| `--left_file`               | Path to the left image file                                            |
-| `--right_file`              | Path to the right image file                                           |
-| `--intrinsic_file`          | Path to the camera intrinsic matrix and baseline file                  |
-| `--out_dir`                 | Output directory for saving results                                    |
-| `--remove_invisible`        | Whether to ignore non-overlapping region's depth (0: no, 1: yes)      |
-| `--denoise_cloud`           | Whether to apply denoising to the point cloud (0: no, 1: yes)          |
-| `--scale`                   | Image scaling factor                                                   |
-| `--get_pc`                  | Obtain point cloud output (0: no, 1: yes)                              |
-| `--valid_iters`             | Number of refinement updates during forward pass                       |
-| `--max_disp`                | Maximum disparity for volume encoding, 192 should be enough, unless you need to sense very near objects (e.g. <0.1m). Increasing it runs slower and uses more memory. |
-| `--zfar`                    | Maximum depth to include in point cloud                                |
+| `--ckpt_dir`               | 模型权重路径                                 |
+| `--left_dir`               | 左视图路径                                            |
+| `--right_dir`              | 右视图路径                                          |
+| `--output_path `           | 输出文件路径                                    |
+| `--scale`                   | 图像缩放比例系数                                                   |
+| `--valid_iters`             | 前向传播过程中的优化更新次数                       |
+| `--max_frame`                | 最大处理帧数 |
+| `--zfar`                    | BEV可视化的最大深度                                |
 
-Refer to `scripts/run_demo.py` for comprehensive list of flags.
+有关参数的完整列表，请参阅 `detect_and_track/run_stereo.py`。
 
-**Tips:**
-- The input left and right images should be rectified and undistorted, which means there should not be fisheye kind of lens distortion and the epipolar lines are horizontal between the left/right images. If you obtain images from stereo cameras such as Zed, they usually have handled this for you.
-- Do not swap left and right image. The left image should really be obtained from the left-side camera (objects will appear righter in the image).
-- We recommend to use PNG files with no lossy compression
-- Our method works best on stereo RGB images. However, we have also tested it on monochrome or IR stereo images (e.g. from RealSense D4XX series) and it works well too.
-- To get point cloud for your own data, you need to specify the intrinsics. In the intrinsic file in args, 1st line is the flattened 1x9 intrinsic matrix, 2nd line is the baseline (distance) between the left and right camera, unit in meters.
-- The model performs better for image width size <1000. You can run with smaller scale, e.g. `--scale 0.5` to downsize input image, then upsize the output depth to your need with nearest neighbor interpolation.
-- For faster inference, you can reduce the input image resolution by e.g. `--scale 0.5`, and reduce refine iterations by e.g. `--valid_iters 4`.
-- Note that the 1st time running is slower due to compilation, use a while loop after warm up for live running.
+注：
+- 左右眼输入数据需要是序列图像，且应经过校正，无畸变，左右图像之间的极线应呈水平方向。可以使用[KITTI](https://www.cvlibs.net/datasets/kitti/raw_data.php)官方数据
+- 请勿调换左右图像的位置。左图必须确实来自左侧摄像头（图像中的物体应向右偏移）。
+- 我们建议使用无损压缩的 PNG 文件。
+- 对于高分辨率图像（>1000px），您可以：(1) 使用 `--hiera 1` 启用分层推理，以获得全分辨率深度图，但速度较慢；或者 (2) 使用较小的缩放比例，例如 `--scale 0.5`，以获得缩小分辨率但速度更快的深度图。
+若需加快推理速度，可通过 `--scale 0.5` 等参数降低输入图像分辨率，并减少精化迭代次数，例如使用 `--valid_iters 4`.
 
-Expect to see results like below:
-- Disparity/Depth:
-  <p align="center">
-    <img src="assets/disp_vis.png" alt="Disparity Visualization" width="100%">
-  </p>
+## 演示视频
 
-- Point cloud:
-  <p align="center">
-    <img src="assets/pcl_vis.png" alt="Point Cloud Visualization" width="100%">
-  </p>
+[演示视频](https://www.bilibili.com/video/BV1eNTy6AEcD/)
 
+| 模型     | 推理速度(3080 10G)||||
+|----------|-|-|-|----------------------------|
+|      | total | Detect | Depth | Avg FPS |
+| `20-30-48` (valid_iters=8)  | 198ms|12ms|181ms|4.3 |
 
-# ONNX/TRT
-For TRT, we recommend first setup env in docker.
+其余配置选项、工作流和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
 
-## Single ONNX
+# 致谢
 
-Export the full model as a single ONNX file. This replaces the Triton GWC kernel with ONNX-compatible ops so no intermediate engine split is needed.
+[YOLOv11 by Ultralytics](https://github.com/ultralytics/ultralytics)
 
-```bash
-python scripts/make_single_onnx.py --model_dir weights/23-36-37/model_best_bp2_serialize.pth --save_path output/ --height 480 --width 640 --valid_iters 8 --max_disp 192
-```
+[Depth Anything v2 by TikTok](https://github.com/DepthAnything/Depth-Anything-V2)
 
-| Flag              | Meaning                                                                  |
-|-------------------|--------------------------------------------------------------------------|
-| `--model_dir`     | Path to the trained weights/model file                                   |
-| `--save_path`     | Directory to save the ONNX model and config                              |
-| `--height`        | Input image height, must be divisible by 32. Reduce for faster speed.    |
-| `--width`         | Input image width, must be divisible by 32. Reduce for faster speed.     |
-| `--valid_iters`   | Number of refinement updates during forward pass, reduce for faster speed, but may drop quality |
-| `--max_disp`      | Maximum disparity for volume encoding, 192 should be enough, unless you need to sense very near objects (e.g. <0.1m). Increasing it runs slower and uses more memory. |
-| `--onnx_name`     | Base name for the saved ONNX file (default: `fast_foundationstereo`)     |
-
-Then convert to a single TRT engine:
-```bash
-trtexec --onnx=output/fast_foundationstereo.onnx --saveEngine=output/fast_foundationstereo.engine --fp16
-```
-
-To run inference with the single ONNX or TRT engine:
-```bash
-python scripts/run_demo_single_trt.py --model_dir output/ --left_file demo_data/left.png --right_file demo_data/right.png --intrinsic_file demo_data/K.txt --out_dir output_demo/ --get_pc 1 --remove_invisible 0 --denoise_cloud 1 --zfar 100
-```
-
-The script auto-detects `.engine` or `.onnx` files in `--model_dir`. To use a specific file, pass `--model_file` directly.
-
-| Flag                  | Meaning                                                                  |
-|-----------------------|--------------------------------------------------------------------------|
-| `--model_dir`         | Directory containing the .onnx/.engine file and its .yaml config         |
-| `--model_file`        | Explicit path to .onnx or .engine file (overrides auto-search)           |
-| `--left_file`         | Path to the left image file                                              |
-| `--right_file`        | Path to the right image file                                             |
-| `--intrinsic_file`    | Path to the camera intrinsic matrix and baseline file                    |
-| `--out_dir`           | Output directory for saving results                                      |
-| `--remove_invisible`  | Whether to ignore non-overlapping region's depth (0: no, 1: yes)         |
-| `--denoise_cloud`     | Whether to apply denoising to the point cloud (0: no, 1: yes)            |
-| `--get_pc`            | Obtain point cloud output (0: no, 1: yes)                                |
-| `--zfar`              | Maximum depth (m) to include in point cloud                              |
-
-**Note:** The single ONNX model expects **pre-normalized** float32 inputs (ImageNet normalization stripped). The inference script handles this automatically. If integrating into your own pipeline, apply normalization beforehand:
-```
-normalized = (pixel - mean) / std
-mean = [123.675, 116.28, 103.53]
-std  = [ 58.395, 57.12, 57.375]
-```
-
-## Two-stage ONNX
-
-The original export splits the model into two ONNX files around the Triton GWC kernel, which runs as an intermediate step between the two TRT engines.
-
-```bash
-python scripts/make_onnx.py --model_dir weights/23-36-37/model_best_bp2_serialize.pth --save_path output/ --height 448 --width 640 --valid_iters 8 --max_disp 192
-```
-
-| Flag              | Meaning                                                                  |
-|-------------------|--------------------------------------------------------------------------|
-| `--model_dir`     | Path to the trained weights/model file                                   |
-| `--save_path`     | Directory to save ONNX outputs and zip file                             |
-| `--height`        | Input image height, better to be divisible by 32. Reduce image size can increase speed.                                          |
-| `--width`         | Input image width,  better to be divisible by 32. Reduce image size can increase speed.                                     |
-| `--valid_iters`   | Number of updates during forward pass, reduce it for faster speed, but may drop quality                                    |
-| `--max_disp`      | Maximum disparity for volume encoding, 192 should be enough, unless you need to sense very near objects (e.g. <0.1m). Increasing it runs slower and uses more memory.                                    |
-
-Refer to `scripts/make_onnx.py` for a comprehensive list of available flags.
-
-Then convert from ONNX to TRT:
-```bash
-trtexec --onnx=output/feature_runner.onnx --saveEngine=output/feature_runner.engine --fp16  --useCudaGraph
-trtexec --onnx=output/post_runner.onnx --saveEngine=output/post_runner.engine --fp16  --useCudaGraph
-```
-
-To use the two-stage TRT for inference:
-```bash
-python scripts/run_demo_tensorrt.py --onnx_dir output/ --left_file demo_data/left.png --right_file demo_data/right.png --intrinsic_file demo_data/K.txt --out_dir output/ --remove_invisible 0 --denoise_cloud 1  --get_pc 1 --zfar 100
-```
-
-# Internet-Scale Pseudo-Labeling
-Real-world data offers greater diversity and realism than synthetic data. However, obtaining real stereo images with ground-truth metric depth annotation is notoriously difficult. To address this challenge, we propose an automatic data curation pipeline to generate pseudo-labels on internet-scale stereo images from [Stereo4D](https://stereo4d.github.io/) dataset. **Top:** Pseudo-labeling pipeline on in-the-wild internet stereo data. **Bottom:** Visualization of our generated pseudo-labels.
-
-<p align="center">
-  <img src="assets/stereo4d.jpg" width="50%">
-</p>
-
-Below are visualizations of the intermediate results in our pseudo-labeling process. In the rightmost column, green checkmark or red cross denotes whether samples are kept for training or not, based on the percentage of positive pixels in the consistency mask. Our data curation process can automatically discover failures on noisy internet data such as images containing subtitle (bottom), mosaic (2nd last row) and overly challenging samples that are unsuitable for training (top). The final pseudo-labels can also correct erroneous predictions from FoundationStereo on sky regions (5th row).
-
-<p align="center">
-  <img src="assets/stereo4d_labeling.jpg" width="100%">
-</p>
-
-
-The dataset is available at HuggingFace: https://huggingface.co/datasets/nvidia/ffs_stereo4d
-
-# Citation
-```bibtex
-@article{wen2026fastfoundationstereo,
-  title={{Fast-FoundationStereo}: Real-Time Zero-Shot Stereo Matching},
-  author={Bowen Wen and Shaurya Dewan and Stan Birchfield},
-  journal={CVPR},
-  year={2026}
-}
-```
-
-# Contact
-Please contact [Bowen Wen](https://wenbowen123.github.io/) (bowenw@nvidia.com) for questions and commercial inquiries.
-
-# Acknowledgement
-We would like to thank Xutong Ren, Karsten Patzwaldt, Yonggan Fu, Saurav Muralidharan, Han Cai, Pavlo Molchanov, Yu Wang, Varun Praveen, Joseph Aribido and Jun Gao for their insightful early discussions for this project. We would also like to thank NVIDIA Isaac and TAO teams for their engineering support and valuable discussions. Thanks to the authors of [FoundationStereo](https://github.com/NVlabs/FoundationStereo), [Selective-IGEV](https://github.com/Windsrain/Selective-Stereo), [Stereo4D](https://github.com/Stereo4d/stereo4d-code) and [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) for their code release. Finally, thanks to CVPR reviewers and AC for their appreciation of this work and constructive feedback.
+[Fast-Foundation Stereo by Nvidia](https://github.com/NVlabs/Fast-FoundationStereo)
