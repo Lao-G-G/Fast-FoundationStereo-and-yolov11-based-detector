@@ -93,6 +93,10 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 
 其余配置选项、工作流和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
 
+## 诊断
+
+如果运行报错可以使用`test_single.py`查看具体是哪个模块报错。
+
 # 致谢
 
 [YOLOv11 by Ultralytics](https://github.com/ultralytics/ultralytics)
