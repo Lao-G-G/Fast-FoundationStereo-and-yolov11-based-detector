@@ -1,4 +1,4 @@
-name: dast_foundation_stereo
+name: fast_foundation_stereo
 channels:
   - pytorch
   - nvidia
