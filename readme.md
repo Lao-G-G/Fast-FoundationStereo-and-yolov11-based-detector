@@ -1,43 +1,12 @@
-# Fast-FoundationStereo: Real-Time Zero-Shot Stereo Matching
+# 基于 Fast-Foundation Stereo 和 YOLO v11 的实时3D目标跟踪系统
 
-This is the official implementation of our paper accepted to CVPR 2026
+这是一个实时3D物体检测系统，将用于物体检测的YOLOv11与用于深度估计的Fast-Foundation Stereo相结合，从而生成3D边界框并实现BEV可视化。
 
-[[Website]](https://nvlabs.github.io/Fast-FoundationStereo/) [[Paper]](https://arxiv.org/abs/2512.11130) [[Video]](https://www.youtube.com/watch?v=2BUYZojCzXE)
+# 安装环境
 
-Authors: [Bowen Wen](https://wenbowen123.github.io/), [Shaurya Dewan](https://www.linkedin.com/in/shaurya-dewan-1b07231a2), [Stan Birchfield](https://research.nvidia.com/person/stan-birchfield)
-
-
-# Abstract
-Stereo foundation models achieve strong zero-shot generalization but remain computationally prohibitive for real-time applications. Efficient stereo architectures, on the other hand, sacrifice robustness for speed and require costly per-domain fine-tuning. To bridge this gap, we present Fast-FoundationStereo, a family of architectures that achieve, for the first time, strong zero-shot generalization at real-time frame rate. We employ a divide-and-conquer acceleration strategy with three components: (1) knowledge distillation to compress the hybrid backbone into a single efficient student; (2) blockwise neural architecture search for automatically discovering optimal cost filtering designs under latency budgets, reducing search complexity exponentially; and (3) structured pruning for eliminating redundancy in the iterative refinement module. Furthermore, we introduce an automatic pseudo-labeling pipeline used to curate 1.4M in-the-wild stereo pairs to supplement synthetic training data and facilitate knowledge distillation. The resulting model can run over 10× faster than FoundationStereo while closely matching its zero-shot accuracy, thus establishing a new state-of-the-art among real-time methods.
-
- [NOTE] This model is designed for real-time applications. For offline computation for the best accuracy, please checkout our earlier work [FoundationStereo](https://github.com/NVlabs/FoundationStereo).
-
-
-
-<p align="center">
-  <img src="assets/intro.jpg" width="100%"/>
-</p>
-
-<td align="center">
-  <img src="assets/intro_c.webp" width="60%"/>
-</td>
-<td align="center">
-  <img src="assets/bp2_vs_runtime.jpg" width="60%"/>
-</td>
-
-
-# Environment setup
-- Option 1: Docker
-```bash
-docker build --network host -t ffs -f docker/dockerfile .
-bash docker/run_container.sh
 ```
-
-- Option 2: pip
-```bash
-conda create -n ffs python=3.12 && conda activate ffs
-pip install torch==2.6.0 torchvision==0.21.0 xformers --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
+conda env create -f requirements.yml
+conda activate fast_foundation_stereo
 ```
 
 
