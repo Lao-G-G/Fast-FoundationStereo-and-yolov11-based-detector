@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+
+# Model weights (too large for GitHub, download separately)
+*.pth
+*.pt
+*.pkl
+*.onnx
+*.engine
+weights/
+!weights/.gitkeep
+
+# IDE
+.idea/
+*.vscode/
+.vscode/
+
+# Generated outputs
+output/
+output_docker/
+output_faststereo.mp4
+debug_*.png
+
+# Auto-downloaded YOLO model
+yolo11n.pt
+
+# Official NVIDIA demo/scripts (not needed for detection pipeline)
+scripts/
+demo_data/
+docker/
+cpp/
+assets/
+
+# Build artifacts
+*.so
+
+# Claude / AI assistant
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
