@@ -42,6 +42,7 @@ sys.path.insert(0, _ffs_root)
 sys.path.insert(0, os.path.join(_ffs_root, 'core'))
 
 from stereo_depth_model import StereoDepthEstimator
+from lidar_fusion import LidarDepthFusion, load_lidar_bin
 
 
 def load_kitti_stereo_pairs(left_dir, right_dir, max_frames=None):
@@ -145,6 +146,15 @@ def main():
                         help='Disable Bird\'s Eye View')
     parser.add_argument('--device', type=str, default=None,
                         help='Device (cuda, cpu)')
+    parser.add_argument('--lidar_dir', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_drive_0017_sync\2011_09_26\2011_09_26_drive_0017_sync\velodyne_points\data',
+                        help='Directory containing LiDAR .bin files (optional, for LiDAR-Stereo depth fusion)')
+    parser.add_argument('--calib_path', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_calib\2011_09_26\calib_cam_to_cam.txt',
+                        help='Path to KITTI calib file (P2+R0_rect+Tr_velo_to_cam). '
+                             'For Raw dataset, use --calib_velo_path for extrinsics.')
+    parser.add_argument('--calib_velo_path', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_calib\2011_09_26\calib_velo_to_cam.txt',
+                        help='Path to calib_velo_to_cam.txt (KITTI Raw only). Overrides Tr_velo_to_cam.')
+    parser.add_argument('--lidar_weight', type=float, default=0.7,
+                        help='Weight for LiDAR depth when fusing (0-1, higher = more trust in LiDAR)')
     parser.add_argument('--z_far', type=float, default=80.0,
                         help='Maximum depth for BEV visualization (meters)')
 
@@ -216,6 +226,25 @@ def main():
         projection_matrix=projection_matrix,
         use_metric_depth=True  # Enable metric depth mode
     )
+
+    # Initialize LiDAR fusion (if available) - completely optional
+    lidar_fusion = None
+    lidar_files = []
+    if args.lidar_dir and os.path.isdir(args.lidar_dir):
+        print("Initializing LiDAR-Stereo depth fusion...")
+        lidar_fusion = LidarDepthFusion(
+            camera_K=camera_matrix,
+            baseline=args.baseline,
+            calib_path=args.calib_path,
+            calib_velo_path=args.calib_velo_path,
+            stereo_weight=1.0 - args.lidar_weight,
+            min_lidar_points=5,
+            max_fuse_dist=0.5
+        )
+        lidar_files = sorted(glob(os.path.join(args.lidar_dir, '*.bin')))
+        print(f"Found {len(lidar_files)} LiDAR point clouds")
+    elif args.lidar_dir:
+        print(f"Warning: LiDAR directory not found: {args.lidar_dir}")
 
     # Initialize BEV
     bev = None
@@ -290,25 +319,40 @@ def main():
                 depth_colored = np.zeros((height, width, 3), dtype=np.uint8)
             t_depth = time.time()
 
+            # Step 2.5: Load LiDAR and fuse depth (if available, otherwise skip)
+            fused_info = None
+            if lidar_fusion is not None and idx < len(lidar_files):
+                try:
+                    points_velo = load_lidar_bin(lidar_files[idx])
+                    fused_info = lidar_fusion.fuse_bbox_depth(depth_meters, detections, points_velo)
+                except Exception as e:
+                    print(f"LiDAR fusion error at frame {idx}: {e}")
+
             # Step 3: Build 3D boxes with metric depth
             boxes_3d = []
             active_ids = []
 
-            for detection in detections:
+            for i, detection in enumerate(detections):
                 try:
                     bbox, score, class_id, obj_id = detection
                     class_name = detector.get_class_names()[class_id]
 
-                    # Get metric depth in the bounding box region
-                    # For people/animals, use center point; otherwise median
-                    if class_name.lower() in ['person', 'cat', 'dog']:
-                        center_x = int((bbox[0] + bbox[2]) / 2)
-                        center_y = int((bbox[1] + bbox[3]) / 2)
-                        depth_value = depth_estimator.get_depth_at_point(depth_meters, center_x, center_y)
-                        depth_method = 'center_metric'
+                    # Get metric depth: prefer LiDAR-fused if available, else pure stereo
+                    if fused_info is not None and i < len(fused_info):
+                        depth_value = fused_info[i]['depth_value']
+                        depth_source = fused_info[i]['source']
+                        lidar_pts = fused_info[i]['lidar_points']
+                        depth_method = f'{depth_source}_{lidar_pts}pts'
                     else:
-                        depth_value = depth_estimator.get_depth_in_region(depth_meters, bbox, method='median')
-                        depth_method = 'median_metric'
+                        # Pure stereo fallback
+                        if class_name.lower() in ['person', 'cat', 'dog']:
+                            center_x = int((bbox[0] + bbox[2]) / 2)
+                            center_y = int((bbox[1] + bbox[3]) / 2)
+                            depth_value = depth_estimator.get_depth_at_point(depth_meters, center_x, center_y)
+                            depth_method = 'center_metric'
+                        else:
+                            depth_value = depth_estimator.get_depth_in_region(depth_meters, bbox, method='median')
+                            depth_method = 'median_metric'
 
                     # Skip if depth is invalid
                     if depth_value <= 0:
