@@ -90,7 +90,16 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 
 ## 演示视频
 
-[演示视频](https://www.bilibili.com/video/BV1eNTy6AEcD/)
+[Lidar_fused](https://www.bilibili.com/video/BV1VB3g67ErT/?)
+
+![1](demo/lidar_fused.mp4)
+
+
+
+https://github.com/user-attachments/assets/5537d333-df97-498c-8c81-40d7a086a50f
+
+
+
 
 | 模型     | 推理速度(3080 10G)|输入大小|1242x375||
 |----------|-|-|-|----------------------------|
