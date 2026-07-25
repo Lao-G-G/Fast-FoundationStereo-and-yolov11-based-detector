@@ -89,7 +89,8 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 | 模型     | 推理速度(3080 10G)|输入大小|1242x375||
 |----------|-|-|-|----------------------------|
 |      | total | Detect | Depth | Avg FPS |
-| `20-30-48` (valid_iters=8)  | 198ms|12ms|181ms|4.3 |
+| `20-30-48` (valid_iters=8)camara_only  | 192ms|12ms|172ms|5.3 |
+| `20-30-48` (valid_iters=8)lidar_fusion  | 198ms|11ms|181ms|5.1 |
 
 其余配置选项、工作流和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
 
