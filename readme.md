@@ -90,22 +90,43 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 
 ## 演示视频
 
+[Camera_only](https://www.bilibili.com/video/BV1VB3g67ErT?p=2&)
+
+https://github.com/user-attachments/assets/550a120c-944b-4a8c-b69a-270727ffb4c4
+
 [Lidar_fused](https://www.bilibili.com/video/BV1VB3g67ErT/?)
 
-![1](demo/lidar_fused.mp4)
-
-
-
 https://github.com/user-attachments/assets/5537d333-df97-498c-8c81-40d7a086a50f
-
-
-
 
 | 模型     | 推理速度(3080 10G)|输入大小|1242x375||
 |----------|-|-|-|----------------------------|
 |      | total | Detect | Depth | Avg FPS |
 | `20-30-48` (valid_iters=8)camara_only  | 192ms|12ms|172ms|5.3 |
 | `20-30-48` (valid_iters=8)lidar_fusion  | 198ms|11ms|181ms|5.1 |
+
+## 性能提升
+
+相较于深度估计只依赖于Foundation Stereo，雷达点云的引入可以通过微调像素的深度值来获取更精确的深度估计。
+
+
+|   Depth Error   | 深度估计| Camara_only |Lidar_fusion |
+|----------|-----|----|-----|
+| All | Mean| 1.20m |1.02m |
+|   | Median|0.95m|0.70m|
+| | <0.5m|26.8%|42.0%|
+| | <1.0m|54.5%|67.0%|
+| | <2.0m|85.7%|91.1%|
+| | <5.0m|97.3%|97.3%|
+| Easy | Mean| 0.83m |0.82m |
+|   | Median|0.68m|0.72m|
+| | <1.0m|64.8%|70.4%|
+| Moderate | Mean| 1.22m | 0.77m|
+|   | Median|1.08m|0.52m|
+| | <1.0m|45.7%|71.7%|
+| Hard | Mean|2.79m |2.85 |
+|   | Median|2.56m|2.47|
+| | <1.0m|41.7%|37.3%|
+
 
 其余配置选项和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
 
