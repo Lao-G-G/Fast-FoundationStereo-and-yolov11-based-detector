@@ -24,6 +24,7 @@ output/
 output_docker/
 output_faststereo.mp4
 debug_*.png
+demo/
 
 # Auto-downloaded YOLO model
 yolo11n.pt
