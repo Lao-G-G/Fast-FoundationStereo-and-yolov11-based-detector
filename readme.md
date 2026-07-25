@@ -11,6 +11,7 @@
 │   ├── detection_model.py     # YOLOv11 检测器
 │   ├── bbox3d_utils.py        # 3D 框估计 + 可视化
 │   ├── load_camera_params.py  # 相机参数加载
+│   ├── lidar_fusion.py        # 点云、视觉深度融合
 │   └── test_single.py         # 单帧诊断脚本
 ├── core/                      # Fast-FoundationStereo 核心
 │   ├── foundation_stereo.py   # 模型定义
@@ -59,8 +60,10 @@ weights/
 # 运行
 
 ```
-python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2_serialize.pth --left_dir demo_data/left.png --right_dir demo_data/right.png --output_path output/output_faststereo.mp4  --scale 1 --valid_iters 8 --max_frame 192 --z_far 100
+python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2_serialize.pth --left_dir demo_data/left --right_dir demo_data/right  --lidar_dir /velodyne_points/data --calib_path /path/to/calib_cam_to_cam.txt --calib_velo_path /path/to/calib_velo_to_cam.txt --output_path output/output_faststereo.mp4  --scale 1 --valid_iters 8 --max_frame 192 --z_far 100
 ```
+
+如果传参`--lidar_dir`,则深度图为雷达点云深度和双目视觉深度融合获取，如果不传则退化为纯双目视觉深度。
 
 | Flag                        | Meaning                                                                |
 |-----------------------------|------------------------------------------------------------------------|
@@ -68,6 +71,9 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 | `--left_dir`               | 左视图路径                                            |
 | `--right_dir`              | 右视图路径                                          |
 | `--output_path `           | 输出文件路径                                    |
+| `--lidar_dir `           | 雷达点云路径                                    |
+| `--calib_path `           | 双目相机内参和校正矩阵路径                                    |
+| `--calib_velo_path `           | LiDAR到相机外参路径                                    |
 | `--scale`                   | 图像缩放比例系数                                                   |
 | `--valid_iters`             | 前向传播过程中的优化更新次数                       |
 | `--max_frame`                | 最大处理帧数 |
@@ -92,7 +98,26 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 | `20-30-48` (valid_iters=8)camara_only  | 192ms|12ms|172ms|5.3 |
 | `20-30-48` (valid_iters=8)lidar_fusion  | 198ms|11ms|181ms|5.1 |
 
-其余配置选项、工作流和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
+其余配置选项和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
+
+## 工作流
+
+```
+左目图像 ──→ YOLOv11 2D 检测 ──→ 2D 边界框 + 类别 + 跟踪 ID
+                                        ↓
+                                  雷达点云获取检测框深度
+                                        ↓
+左目+右目 ──→ FoundationStereo ──→ 全图像素级 metric 深度图，雷达深度微调
+              ↑                         ↓
+        2D 框 + 深度值 + 相机内参 → 反向投影 → 3D 边界框 (x, y, z, 尺寸, 朝向)
+                                           ↓
+                                      可视化：3D 立体框 + BEV 俯视图
+```
+
+1. **目标检测**：YOLOv11 检测左眼视图中的目标并提供 2D 边界框
+2. **深度估计**：Foundation Stereo 根据左右眼视差为整个画面生成深度图，用雷达点云数据获取检测框深度，微调检测框的深度图
+3. **3D 边界框估计**：根据检测框的深度估计以及左右眼视差生成 3D 边界框
+4. **可视化**：渲染 3D 边界框和俯视图，以更好地理解空间关系
 
 ## 诊断
 
