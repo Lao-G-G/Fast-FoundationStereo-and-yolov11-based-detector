@@ -146,6 +146,7 @@ def main():
                         help='Disable Bird\'s Eye View')
     parser.add_argument('--device', type=str, default=None,
                         help='Device (cuda, cpu)')
+    # parser.add_argument('--lidar_dir', type=str, default=None)
     parser.add_argument('--lidar_dir', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_drive_0017_sync\2011_09_26\2011_09_26_drive_0017_sync\velodyne_points\data',
                         help='Directory containing LiDAR .bin files (optional, for LiDAR-Stereo depth fusion)')
     parser.add_argument('--calib_path', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_calib\2011_09_26\calib_cam_to_cam.txt',
@@ -153,7 +154,7 @@ def main():
                              'For Raw dataset, use --calib_velo_path for extrinsics.')
     parser.add_argument('--calib_velo_path', type=str, default=r'D:\PyCharm_2025.1.1.1\project\YOLOStereo3D-master\dataset\2011_09_26_calib\2011_09_26\calib_velo_to_cam.txt',
                         help='Path to calib_velo_to_cam.txt (KITTI Raw only). Overrides Tr_velo_to_cam.')
-    parser.add_argument('--lidar_weight', type=float, default=0.7,
+    parser.add_argument('--lidar_weight', type=float, default=0.4,
                         help='Weight for LiDAR depth when fusing (0-1, higher = more trust in LiDAR)')
     parser.add_argument('--z_far', type=float, default=80.0,
                         help='Maximum depth for BEV visualization (meters)')
@@ -239,7 +240,7 @@ def main():
             calib_velo_path=args.calib_velo_path,
             stereo_weight=1.0 - args.lidar_weight,
             min_lidar_points=5,
-            max_fuse_dist=0.5
+            max_fuse_dist=5
         )
         lidar_files = sorted(glob(os.path.join(args.lidar_dir, '*.bin')))
         print(f"Found {len(lidar_files)} LiDAR point clouds")

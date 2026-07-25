@@ -156,15 +156,23 @@ class StereoDepthEstimator:
 
         # Unpad and convert to numpy
         disp = padder.unpad(disp.float())
-        disp = disp.data.cpu().numpy().reshape(H, W)
+        disp_np = disp.data.cpu().numpy().reshape(H, W)
+
+        # Debug: print disparity stats
+        print(f"[StereoDepth] disparity: min={disp_np.min():.2f}, max={disp_np.max():.2f}, "
+              f">0 pixels: {(disp_np>0).sum()}/{disp_np.size}", flush=True)
 
         # Convert disparity to metric depth: depth = focal_length * baseline / disparity
-        # Clamp disparity to avoid division by zero
-        disp_safe = np.clip(disp, 0.001, None)
+        disp_safe = np.clip(disp_np, 0.001, None)
         depth_meters = self.focal_length * self.baseline / disp_safe
 
         # Handle invalid disparities
-        depth_meters[disp <= 0] = 0.0
+        depth_meters[disp_np <= 0] = 0.0
+
+        if (depth_meters > 0).sum() > 0:
+            print(f"[StereoDepth] depth meters: min={depth_meters[depth_meters>0].min():.1f}, "
+                  f"max={depth_meters.max():.1f}, median={np.median(depth_meters[depth_meters>0]):.1f}, "
+                  f"valid: {(depth_meters>0).sum()}/{depth_meters.size}", flush=True)
 
         return depth_meters.astype(np.float32)
 
@@ -179,14 +187,17 @@ class StereoDepthEstimator:
         Returns:
             numpy.ndarray: Colorized depth map (BGR)
         """
-        # If metric depth, normalize first
         valid = depth_map > 0
         if np.any(valid):
-            d_min = depth_map[valid].min()
-            d_max = depth_map[valid].max()
+            # Clamp depth to reasonable range (0.5-80m for KITTI) and normalize
+            d_clipped = np.clip(depth_map, 0.5, 80.0)
+            d_min = d_clipped[valid].min()
+            d_max = d_clipped[valid].max()
             if d_max > d_min:
-                depth_norm = np.zeros_like(depth_map)
-                depth_norm[valid] = (depth_map[valid] - d_min) / (d_max - d_min)
+                depth_norm = np.zeros_like(depth_map, dtype=np.float32)
+                depth_norm[valid] = (d_clipped[valid] - d_min) / (d_max - d_min)
+                zero_mask = ~valid
+                depth_norm[zero_mask] = 0.0
                 depth_uint8 = (depth_norm * 255).astype(np.uint8)
             else:
                 depth_uint8 = np.zeros_like(depth_map, dtype=np.uint8)

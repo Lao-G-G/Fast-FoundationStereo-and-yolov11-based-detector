@@ -77,7 +77,9 @@ def fuse_depth_in_bbox(stereo_depth, lidar_depth, lidar_n,
     if lidar_n < min_lidar_points or lidar_depth <= 0:
         return stereo_depth, 'stereo'
     if abs(stereo_depth - lidar_depth) > max_fuse_dist:
-        return lidar_depth, 'lidar'
+        # Large discrepancy → LiDAR projection likely wrong, keep stereo
+        return stereo_depth, 'stereo'
+    # Small discrepancy → weighted fusion, binocular is dominant
     fused = stereo_weight * stereo_depth + (1 - stereo_weight) * lidar_depth
     return fused, 'fused'
 
