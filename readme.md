@@ -79,6 +79,8 @@ python detect_and_track/run_stereo.py --ckpt_dir weights/23-36-37/model_best_bp2
 | `--max_frame`                | 最大处理帧数 |
 | `--zfar`                    | BEV可视化的最大深度                                |
 
+其余配置选项和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
+
 有关参数的完整列表，请参阅 `detect_and_track/run_stereo.py`。
 
 注：
@@ -127,8 +129,28 @@ https://github.com/user-attachments/assets/5537d333-df97-498c-8c81-40d7a086a50f
 |   | Median|2.56m|2.47|
 | | <1.0m|41.7%|37.3%|
 
+### 结果对比可视化
 
-其余配置选项和[FoundationStereo Detector](https://github.com/Lao-G-G/FoundationStereo-based-YOLO-3D-detector/tree/main)一致。
+#### 原始双视图图像
+
+<p align="center">
+  <img src="demo/debug_left.png" width="45%">
+  <img src="demo/debug_right.png" width="45%">
+</p>
+
+#### 双目视觉深度
+
+<p align="center">
+  <img src="demo/camera_depth.png"  width="45%">
+  <img src="demo/camera_result.png"  width="45%">
+</p>
+
+#### 视觉-雷达融合深度
+
+<p align="center">
+  <img src="demo/lidar_depth.png"  width="45%">
+  <img src="demo/lidar_result.png"  width="45%">
+</p>
 
 ## 工作流
 
